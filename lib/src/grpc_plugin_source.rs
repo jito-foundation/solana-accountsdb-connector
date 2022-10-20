@@ -1,17 +1,17 @@
-use jsonrpc_core::futures::StreamExt;
-use jsonrpc_core_client::transports::http;
-
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
-use solana_client::rpc_response::{Response, RpcKeyedAccount};
-use solana_rpc::{rpc::rpc_accounts::AccountsDataClient, rpc::OptionalContext};
-use solana_sdk::{account::Account, commitment_config::CommitmentConfig, pubkey::Pubkey};
+use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use futures::{future, future::FutureExt};
-use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
-
+use jsonrpc_core::futures::StreamExt;
+use jsonrpc_core_client::transports::http;
 use log::*;
-use std::{collections::HashMap, str::FromStr, time::Duration};
+use solana_account_decoder::UiAccountEncoding;
+use solana_client::{
+    rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
+    rpc_response::{Response, RpcKeyedAccount},
+};
+use solana_rpc::rpc::{rpc_accounts::AccountsDataClient, OptionalContext};
+use solana_sdk::{account::Account, commitment_config::CommitmentConfig, pubkey::Pubkey};
+use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
 pub mod geyser_proto {
     tonic::include_proto!("accountsdb");
@@ -42,6 +42,7 @@ async fn get_snapshot(
         encoding: Some(UiAccountEncoding::Base64),
         commitment: Some(CommitmentConfig::finalized()),
         data_slice: None,
+        min_context_slot: None,
     };
     let program_accounts_config = RpcProgramAccountsConfig {
         filters: None,
@@ -64,11 +65,10 @@ async fn get_snapshot(
 async fn feed_data_geyser(
     grpc_config: &GrpcSourceConfig,
     tls_config: Option<ClientTlsConfig>,
-    snapshot_config: &SnapshotSourceConfig,
     sender: async_channel::Sender<Message>,
+    // If provided receive snapshots accounts owned by a specific program id.
+    maybe_snapshot_config: &Option<SnapshotSourceConfig>,
 ) -> anyhow::Result<()> {
-    let program_id = Pubkey::from_str(&snapshot_config.program_id)?;
-
     let endpoint = Endpoint::from_str(&grpc_config.connection_string)?;
     let channel = if let Some(tls) = tls_config {
         endpoint.tls_config(tls)?
@@ -97,7 +97,16 @@ async fn feed_data_geyser(
     let mut first_full_slot: u64 = u64::MAX;
 
     // If a snapshot should be performed when ready.
-    let mut snapshot_needed = true;
+    let (mut snapshot_needed, program_id, rpc_http_url) =
+        if let Some(snapshot_config) = maybe_snapshot_config {
+            (
+                true,
+                Pubkey::from_str(&snapshot_config.program_id)?,
+                snapshot_config.rpc_http_url.clone(),
+            )
+        } else {
+            (false, Pubkey::default(), String::default())
+        };
 
     // The highest "rooted" slot that has been seen.
     let mut max_rooted_slot = 0;
@@ -159,7 +168,7 @@ async fn feed_data_geyser(
                             }
                             if snapshot_needed && max_rooted_slot - rooted_to_finalized_slots > first_full_slot {
                                 snapshot_needed = false;
-                                snapshot_future = tokio::spawn(get_snapshot(snapshot_config.rpc_http_url.clone(), program_id)).fuse();
+                                snapshot_future = tokio::spawn(get_snapshot(rpc_http_url.clone(), program_id)).fuse();
                             }
                         }
                     },
@@ -173,7 +182,7 @@ async fn feed_data_geyser(
                         if write.slot > newest_write_slot {
                             newest_write_slot = write.slot;
                         } else if max_rooted_slot > 0 && write.slot < max_rooted_slot - max_out_of_order_slots {
-                            anyhow::bail!("received write {} slots back from max rooted slot {}", max_rooted_slot - write.slot, max_rooted_slot);
+                            warn!("received write {} slots back from max rooted slot {}", max_rooted_slot - write.slot, max_rooted_slot);
                         }
 
                         let pubkey_writes = slot_pubkey_writes.entry(write.slot).or_default();
@@ -252,7 +261,7 @@ pub async fn process_events(
     let (msg_sender, msg_receiver) = async_channel::bounded::<Message>(config.dedup_queue_size);
     for grpc_source in config.grpc_sources.clone() {
         let msg_sender = msg_sender.clone();
-        let snapshot_source = config.snapshot.clone();
+        let maybe_snapshot_source = config.maybe_snapshot_config.clone();
         let metrics_sender = metrics_sender.clone();
 
         // Make TLS config if configured
@@ -272,8 +281,8 @@ pub async fn process_events(
                 let out = feed_data_geyser(
                     &grpc_source,
                     tls_config.clone(),
-                    &snapshot_source,
                     msg_sender.clone(),
+                    &maybe_snapshot_source,
                 );
                 let result = out.await;
                 assert!(result.is_err());

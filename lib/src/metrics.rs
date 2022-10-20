@@ -1,9 +1,10 @@
-use {
-    log::*,
-    std::collections::HashMap,
-    std::sync::{atomic, Arc, Mutex, RwLock},
-    tokio::time,
+use std::{
+    collections::HashMap,
+    sync::{atomic, Arc, Mutex, RwLock},
 };
+
+use log::*;
+use tokio::time;
 
 #[derive(Debug)]
 enum Value {

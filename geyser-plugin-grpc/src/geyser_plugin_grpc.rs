@@ -245,7 +245,7 @@ impl GeyserPlugin for Plugin {
     ) -> PluginResult<()> {
         let data = self.data.as_ref().expect("plugin must be initialized");
         match account {
-            ReplicaAccountInfoVersions::V0_0_1(account) => {
+            ReplicaAccountInfoVersions::V0_0_2(account) => {
                 if account.pubkey.len() != 32 {
                     error!(
                         "bad account pubkey length: {}",
@@ -293,7 +293,11 @@ impl GeyserPlugin for Plugin {
                     rent_epoch: account.rent_epoch,
                     data: account.data.to_vec(),
                     is_selected,
+                    tx_signature: account.txn_signature.map(|sig| sig.to_string()),
                 }));
+            }
+            _ => {
+                unreachable!("v0.0.2 only supported");
             }
         }
         Ok(())

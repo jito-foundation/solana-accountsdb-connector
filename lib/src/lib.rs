@@ -1,19 +1,13 @@
 pub mod chain_data;
 pub mod grpc_plugin_source;
-pub mod memory_target;
 pub mod metrics;
-pub mod postgres_target;
-pub mod postgres_types_numeric;
-pub mod websocket_source;
 
+use std::sync::Arc;
+
+use async_trait::async_trait;
 pub use chain_data::SlotStatus;
-
-use {
-    async_trait::async_trait,
-    serde_derive::Deserialize,
-    solana_sdk::{account::Account, pubkey::Pubkey},
-    std::sync::Arc,
-};
+use serde_derive::Deserialize;
+use solana_sdk::{account::Account, pubkey::Pubkey};
 
 trait AnyhowWrap {
     type Value;
@@ -112,7 +106,7 @@ pub struct GrpcSourceConfig {
 pub struct SourceConfig {
     pub dedup_queue_size: usize,
     pub grpc_sources: Vec<GrpcSourceConfig>,
-    pub snapshot: SnapshotSourceConfig,
+    pub maybe_snapshot_config: Option<SnapshotSourceConfig>,
     pub rpc_ws_url: String,
 }
 

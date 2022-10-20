@@ -37,6 +37,8 @@ message AccountWrite {
   // If false, then it is sent because this address previously matched
   // the criterion (i.e. account is closed/reused)
   bool is_selected = 10;
+  // Transaction signature that caused this update.
+  optional string tx_signature = 11;
 }
 
 message SlotUpdate {
