@@ -1,5 +1,5 @@
 use {
-    crate::accounts_selector::AccountsSelector,
+    crate::geyser_config::GeyserConfig,
     bs58,
     geyser_proto::{
         slot_update::Status as SlotUpdateStatus, update::UpdateOneof, AccountWrite, Ping,
@@ -103,7 +103,7 @@ pub struct PluginData {
     runtime: Option<tokio::runtime::Runtime>,
     server_broadcast: broadcast::Sender<Update>,
     server_exit_sender: Option<broadcast::Sender<()>>,
-    accounts_selector: AccountsSelector,
+    accounts_selector: GeyserConfig,
 
     /// Largest slot that an account write was processed for
     highest_write_slot: Arc<AtomicU64>,
@@ -328,11 +328,11 @@ impl GeyserPlugin for Plugin {
 }
 
 impl Plugin {
-    fn create_accounts_selector_from_config(config: &serde_json::Value) -> AccountsSelector {
+    fn create_accounts_selector_from_config(config: &serde_json::Value) -> GeyserConfig {
         let accounts_selector = &config["accounts_selector"];
 
         if accounts_selector.is_null() {
-            AccountsSelector::default()
+            GeyserConfig::default()
         } else {
             let accounts = &accounts_selector["accounts"];
             let accounts: Vec<String> = if accounts.is_array() {
@@ -356,7 +356,7 @@ impl Plugin {
             } else {
                 Vec::default()
             };
-            AccountsSelector::new(&accounts, &owners)
+            GeyserConfig::new(&accounts, &owners)
         }
     }
 }

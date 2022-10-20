@@ -8,10 +8,17 @@ package accountsdb;
 
 service AccountsDb {
   rpc Subscribe(SubscribeRequest) returns (stream Update) {}
+
+  // Subscribes to accounts written to.
+  rpc SubscribeAccountUpdates(SubscribeAccountUpdatesRequest) returns (stream SubscribeAccountUpdatesStream) {}
 }
 
-message SubscribeRequest {
+message SubscribeAccountUpdatesRequest {
+  // If true, excludes the account data from being sent over the wire.
+  bool exclude_account_data = 1;
 }
+
+message SubscribeRequest {}
 
 message Update {
   oneof update_oneof {
@@ -20,6 +27,10 @@ message Update {
     Ping ping = 3;
     SubscribeResponse subscribe_response = 4;
   }
+}
+
+message SubscribeAccountUpdatesStream {
+  AccountWrite account_write = 1;
 }
 
 message AccountWrite {
