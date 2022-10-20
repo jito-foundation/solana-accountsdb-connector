@@ -2,11 +2,7 @@
 members = [
         "geyser-plugin-grpc",
         "lib",
-        "connector-raw",
-        "connector-mango",
-        "mango-pnl-service",
 ]
-
 
 [patch.crates-io]
 # for gzip encoded responses
