@@ -20,7 +20,6 @@ tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-postgres = "0.7"
 postgres-types = { version = "0.2", features = ["array-impls", "derive"] }
-postgres-native-tls = "0.5"
 native-tls = "0.2"
 
 # postgres_query hasn't updated its crate in a while
@@ -37,14 +36,12 @@ bs58 = "0.3.1"
 log = "0.4"
 rand = "0.7"
 anyhow = "1.0"
-fixed = { version = "1.9.0", features = ["serde"] }
 bytes = "1.0"
 
 futures = "0.3.17"
 futures-core = "0.3"
 futures-util = "0.3"
 
-async-stream = "0.2"
 async-channel = "1.6"
 async-trait = "0.1"
 

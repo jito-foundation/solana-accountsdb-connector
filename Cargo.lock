@@ -351,12 +351,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "az"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f771a5d1f5503f7f4279a30f3643d3421ba149848b89ecaaec0ea2acf04a5ac4"
-
-[[package]]
 name = "backoff"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1403,19 +1397,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fixed"
-version = "1.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80a9a8cb2e34880a498f09367089339bda5e12d6f871640f947850f7113058c0"
-dependencies = [
- "az",
- "bytemuck",
- "half",
- "serde",
- "typenum",
-]
-
-[[package]]
 name = "fixedbitset"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1729,12 +1710,6 @@ dependencies = [
  "tokio-util 0.6.9",
  "tracing",
 ]
-
-[[package]]
-name = "half"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "hash32"
@@ -3182,19 +3157,6 @@ dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
  "syn 1.0.102",
-]
-
-[[package]]
-name = "postgres-native-tls"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d442770e2b1e244bb5eb03b31c79b65bb2568f413b899eaba850fa945a65954"
-dependencies = [
- "futures 0.3.21",
- "native-tls",
- "tokio",
- "tokio-native-tls",
- "tokio-postgres",
 ]
 
 [[package]]
@@ -4705,11 +4667,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel",
- "async-stream 0.2.1",
  "async-trait",
  "bs58 0.3.1",
  "bytes 1.1.0",
- "fixed",
  "futures 0.3.21",
  "futures-core",
  "futures-util",
@@ -4717,7 +4677,6 @@ dependencies = [
  "jsonrpc-core-client",
  "log 0.4.17",
  "native-tls",
- "postgres-native-tls",
  "postgres-types",
  "postgres_query",
  "prost 0.9.0",
