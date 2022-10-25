@@ -12,11 +12,16 @@ use {
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, Result as PluginResult,
         SlotStatus,
     },
-    std::collections::HashSet,
-    std::convert::TryInto,
-    std::sync::atomic::{AtomicU64, Ordering},
-    std::sync::RwLock,
-    std::{fs::File, io::Read, sync::Arc},
+    std::{
+        collections::HashSet,
+        convert::TryInto,
+        fs::File,
+        io::Read,
+        sync::{
+            atomic::{AtomicU64, Ordering},
+            Arc, RwLock,
+        },
+    },
     tokio::sync::{broadcast, mpsc},
     tonic::transport::Server,
 };
@@ -26,8 +31,8 @@ pub mod geyser_proto {
 }
 
 pub mod geyser_service {
-    use super::*;
     use {
+        super::*,
         geyser_proto::accounts_db_server::AccountsDb,
         tokio_stream::wrappers::ReceiverStream,
         tonic::{Code, Request, Response, Status},
@@ -245,7 +250,7 @@ impl GeyserPlugin for Plugin {
     ) -> PluginResult<()> {
         let data = self.data.as_ref().expect("plugin must be initialized");
         match account {
-            ReplicaAccountInfoVersions::V0_0_2(account) => {
+            ReplicaAccountInfoVersions::V0_0_1(account) => {
                 if account.pubkey.len() != 32 {
                     error!(
                         "bad account pubkey length: {}",
@@ -293,7 +298,7 @@ impl GeyserPlugin for Plugin {
                     rent_epoch: account.rent_epoch,
                     data: account.data.to_vec(),
                     is_selected,
-                    tx_signature: account.txn_signature.map(|sig| sig.to_string()),
+                    tx_signature: None,
                 }));
             }
             _ => {
