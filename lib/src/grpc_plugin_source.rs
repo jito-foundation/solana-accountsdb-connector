@@ -10,7 +10,7 @@ use solana_client::{
     rpc_response::{Response, RpcKeyedAccount},
 };
 use solana_rpc::rpc::{rpc_accounts::AccountsDataClient, OptionalContext};
-use solana_sdk::{account::Account, commitment_config::CommitmentConfig, pubkey::Pubkey};
+use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey};
 use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
 pub mod geyser_proto {
@@ -330,7 +330,6 @@ pub async fn process_events(
                 match update.update_oneof.expect("invalid grpc") {
                     geyser_proto::update::UpdateOneof::AccountWrite(update) => {
                         assert!(update.pubkey.len() == 32);
-                        assert!(update.owner.len() == 32);
 
                         metric_account_writes.increment();
                         metric_account_queue.set(account_write_queue_sender.len() as u64);
@@ -349,13 +348,6 @@ pub async fn process_events(
                             .send(AccountWrite {
                                 pubkey: Pubkey::new(&update.pubkey),
                                 slot: update.slot,
-                                write_version: update.write_version,
-                                lamports: update.lamports,
-                                owner: Pubkey::new(&update.owner),
-                                executable: update.executable,
-                                rent_epoch: update.rent_epoch,
-                                data: update.data,
-                                is_selected: update.is_selected,
                             })
                             .await
                             .expect("send success");
@@ -396,11 +388,9 @@ pub async fn process_events(
                     metric_snapshot_account_writes.increment();
                     metric_account_queue.set(account_write_queue_sender.len() as u64);
 
-                    // TODO: Resnapshot on invalid data?
-                    let account: Account = keyed_account.account.decode().unwrap();
                     let pubkey = Pubkey::from_str(&keyed_account.pubkey).unwrap();
                     account_write_queue_sender
-                        .send(AccountWrite::from(pubkey, update.context.slot, 0, account))
+                        .send(AccountWrite::from(pubkey, update.context.slot))
                         .await
                         .expect("send success");
                 }

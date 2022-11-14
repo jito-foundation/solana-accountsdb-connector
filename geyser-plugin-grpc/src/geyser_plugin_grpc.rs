@@ -283,21 +283,15 @@ impl GeyserPlugin for Plugin {
                 );
 
                 data.broadcast(UpdateOneof::AccountWrite(AccountWrite {
-                    slot,
-                    is_startup,
-                    write_version: account.write_version,
                     pubkey: account.pubkey.to_vec(),
-                    lamports: account.lamports,
-                    owner: account.owner.to_vec(),
-                    executable: account.executable,
-                    rent_epoch: account.rent_epoch,
-                    data: account.data.to_vec(),
-                    is_selected,
                     tx_signature: account.txn_signature.map(|sig| sig.to_string()),
+                    is_startup,
+                    slot,
+                    write_version: account.write_version,
                 }));
             }
             _ => {
-                unreachable!("v0.0.2 only supported");
+                unreachable!("only v0.0.2 supported");
             }
         }
         Ok(())

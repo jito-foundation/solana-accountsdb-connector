@@ -2,12 +2,10 @@ pub mod chain_data;
 pub mod grpc_plugin_source;
 pub mod metrics;
 
-use std::sync::Arc;
-
-use async_trait::async_trait;
 pub use chain_data::SlotStatus;
 use serde_derive::Deserialize;
-use solana_sdk::{account::Account, pubkey::Pubkey};
+use solana_sdk::clock::Slot;
+use solana_sdk::pubkey::Pubkey;
 
 trait AnyhowWrap {
     type Value;
@@ -24,29 +22,12 @@ impl<T, E: std::fmt::Debug> AnyhowWrap for Result<T, E> {
 #[derive(Clone, PartialEq, Debug)]
 pub struct AccountWrite {
     pub pubkey: Pubkey,
-    pub slot: u64,
-    pub write_version: u64,
-    pub lamports: u64,
-    pub owner: Pubkey,
-    pub executable: bool,
-    pub rent_epoch: u64,
-    pub data: Vec<u8>,
-    pub is_selected: bool,
+    pub slot: Slot,
 }
 
 impl AccountWrite {
-    fn from(pubkey: Pubkey, slot: u64, write_version: u64, account: Account) -> AccountWrite {
-        AccountWrite {
-            pubkey,
-            slot: slot,
-            write_version,
-            lamports: account.lamports,
-            owner: account.owner,
-            executable: account.executable,
-            rent_epoch: account.rent_epoch,
-            data: account.data,
-            is_selected: true,
-        }
+    fn from(pubkey: Pubkey, slot: Slot) -> AccountWrite {
+        AccountWrite { pubkey, slot }
     }
 }
 
@@ -120,64 +101,4 @@ pub struct SnapshotSourceConfig {
 pub struct Config {
     pub postgres_target: PostgresConfig,
     pub source: SourceConfig,
-}
-
-#[async_trait]
-pub trait AccountTable: Sync + Send {
-    fn table_name(&self) -> &str;
-    async fn insert_account_write(
-        &self,
-        client: &postgres_query::Caching<tokio_postgres::Client>,
-        account_write: &AccountWrite,
-    ) -> anyhow::Result<()>;
-}
-
-pub type AccountTables = Vec<Arc<dyn AccountTable>>;
-
-pub struct RawAccountTable {}
-
-pub fn encode_address(addr: &Pubkey) -> String {
-    bs58::encode(&addr.to_bytes()).into_string()
-}
-
-#[async_trait]
-impl AccountTable for RawAccountTable {
-    fn table_name(&self) -> &str {
-        "account_write"
-    }
-
-    async fn insert_account_write(
-        &self,
-        client: &postgres_query::Caching<tokio_postgres::Client>,
-        account_write: &AccountWrite,
-    ) -> anyhow::Result<()> {
-        let pubkey = encode_address(&account_write.pubkey);
-        let owner = encode_address(&account_write.owner);
-        let slot = account_write.slot as i64;
-        let write_version = account_write.write_version as i64;
-        let lamports = account_write.lamports as i64;
-        let rent_epoch = account_write.rent_epoch as i64;
-
-        // TODO: should update for same write_version to work with websocket input
-        let query = postgres_query::query!(
-            "INSERT INTO account_write
-            (pubkey_id, slot, write_version, is_selected,
-             owner_id, lamports, executable, rent_epoch, data)
-            VALUES
-            (map_pubkey($pubkey), $slot, $write_version, $is_selected,
-             map_pubkey($owner), $lamports, $executable, $rent_epoch, $data)
-            ON CONFLICT (pubkey_id, slot, write_version) DO NOTHING",
-            pubkey,
-            slot,
-            write_version,
-            is_selected = account_write.is_selected,
-            owner,
-            lamports,
-            executable = account_write.executable,
-            rent_epoch,
-            data = account_write.data,
-        );
-        let _ = query.execute(client).await?;
-        Ok(())
-    }
 }
