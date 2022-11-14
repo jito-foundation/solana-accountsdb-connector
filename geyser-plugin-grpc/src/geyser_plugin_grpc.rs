@@ -301,9 +301,6 @@ impl GeyserPlugin for Plugin {
                     tx_signature: None,
                 }));
             }
-            _ => {
-                unreachable!("v0.0.2 only supported");
-            }
         }
         Ok(())
     }
