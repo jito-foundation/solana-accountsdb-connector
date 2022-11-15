@@ -4793,6 +4793,7 @@ dependencies = [
  "solana-geyser-plugin-interface",
  "solana-logger",
  "solana-metrics",
+ "solana-program",
  "solana-sdk",
  "tokio",
  "tokio-stream",

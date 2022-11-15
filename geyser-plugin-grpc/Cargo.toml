@@ -22,6 +22,7 @@ solana-geyser-plugin-interface = "~1.14"
 solana-logger = "~1.14"
 solana-metrics = "~1.14"
 solana-sdk = "~1.14"
+solana-program = "~1.14"
 
 tonic = "0.6"
 prost = "0.9"

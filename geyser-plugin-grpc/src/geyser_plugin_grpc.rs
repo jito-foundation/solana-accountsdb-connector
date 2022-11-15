@@ -256,6 +256,11 @@ impl GeyserPlugin for Plugin {
             ),
         };
 
+        // Skip vote accounts.
+        if owner == solana_program::vote::program::id().as_ref() {
+            return Ok(());
+        }
+
         if pubkey.len() != 32 {
             error!(
                 "bad account pubkey length: {}",
