@@ -967,6 +967,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2801af0d36612ae591caa9568261fddce32ce6e08a7275ea334a06a4ad021a2c"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-channel",
+ "crossbeam-deque",
+ "crossbeam-epoch",
+ "crossbeam-queue",
+ "crossbeam-utils 0.8.8",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -999,6 +1013,16 @@ dependencies = [
  "lazy_static",
  "memoffset",
  "scopeguard",
+]
+
+[[package]]
+name = "crossbeam-queue"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cd42583b04998a5363558e5f9291ee5a5ff6b49944332103f251e7479a82aa7"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-utils 0.8.8",
 ]
 
 [[package]]
@@ -3267,32 +3291,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "postgres_query"
-version = "0.3.3"
-source = "git+https://github.com/nolanderc/rust-postgres-query?rev=b4422051c8a31fbba4a35f88004c1cefb1878dd5#b4422051c8a31fbba4a35f88004c1cefb1878dd5"
-dependencies = [
- "async-trait",
- "futures 0.3.25",
- "postgres-types",
- "postgres_query_macro",
- "proc-macro-hack",
- "serde",
- "thiserror",
- "tokio-postgres",
-]
-
-[[package]]
-name = "postgres_query_macro"
-version = "0.3.3"
-source = "git+https://github.com/nolanderc/rust-postgres-query?rev=b4422051c8a31fbba4a35f88004c1cefb1878dd5#b4422051c8a31fbba4a35f88004c1cefb1878dd5"
-dependencies = [
- "proc-macro-hack",
- "proc-macro2 1.0.47",
- "quote 1.0.21",
- "syn 1.0.102",
-]
-
-[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3350,12 +3348,6 @@ dependencies = [
  "quote 1.0.21",
  "version_check 0.9.4",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
@@ -4464,6 +4456,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-accountsdb-connector-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-trait",
+ "bs58 0.3.1",
+ "bytes 1.2.1",
+ "crossbeam",
+ "futures 0.3.25",
+ "futures-core",
+ "futures-util",
+ "jsonrpc-core 18.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jsonrpc-core-client",
+ "log 0.4.17",
+ "native-tls",
+ "postgres-types",
+ "prost 0.9.0",
+ "rand 0.7.3",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "solana-account-decoder",
+ "solana-client",
+ "solana-rpc",
+ "solana-sdk",
+ "tokio",
+ "tokio-postgres",
+ "tokio-stream",
+ "tonic 0.6.2",
+ "tonic-build 0.6.2",
+]
+
+[[package]]
+name = "solana-accountsdb-connector-server"
+version = "0.1.0"
+dependencies = [
+ "async-stream 0.2.1",
+ "bs58 0.4.0",
+ "futures-core",
+ "futures-util",
+ "log 0.4.17",
+ "prost 0.9.0",
+ "rand 0.8.5",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "solana-geyser-plugin-interface",
+ "solana-logger",
+ "solana-metrics",
+ "solana-program",
+ "solana-sdk",
+ "tokio",
+ "tokio-stream",
+ "tonic 0.6.2",
+ "tonic-build 0.6.2",
+]
+
+[[package]]
 name = "solana-address-lookup-table-program"
 version = "1.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4740,65 +4791,6 @@ dependencies = [
  "quote 1.0.21",
  "rustc_version 0.4.0",
  "syn 1.0.102",
-]
-
-[[package]]
-name = "solana-geyser-connector-lib"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-trait",
- "bs58 0.3.1",
- "bytes 1.2.1",
- "futures 0.3.25",
- "futures-core",
- "futures-util",
- "jsonrpc-core 18.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jsonrpc-core-client",
- "log 0.4.17",
- "native-tls",
- "postgres-types",
- "postgres_query",
- "prost 0.9.0",
- "rand 0.7.3",
- "serde",
- "serde_derive",
- "serde_json",
- "solana-account-decoder",
- "solana-client",
- "solana-rpc",
- "solana-sdk",
- "tokio",
- "tokio-postgres",
- "tokio-stream",
- "tonic 0.6.2",
- "tonic-build 0.6.2",
-]
-
-[[package]]
-name = "solana-geyser-connector-plugin-grpc"
-version = "0.1.0"
-dependencies = [
- "async-stream 0.2.1",
- "bs58 0.4.0",
- "futures-core",
- "futures-util",
- "log 0.4.17",
- "prost 0.9.0",
- "rand 0.8.5",
- "serde",
- "serde_derive",
- "serde_json",
- "solana-geyser-plugin-interface",
- "solana-logger",
- "solana-metrics",
- "solana-program",
- "solana-sdk",
- "tokio",
- "tokio-stream",
- "tonic 0.6.2",
- "tonic-build 0.6.2",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-        "geyser-plugin-grpc",
-        "lib",
+        "client",
+        "server",
 ]
 
 [patch.crates-io]

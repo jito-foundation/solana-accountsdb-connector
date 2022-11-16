@@ -3,17 +3,16 @@ use tokio::sync::{broadcast, mpsc};
 use tonic::transport::Server;
 
 pub mod geyser_proto {
-    tonic::include_proto!("accountsdb");
+    tonic::include_proto!("geyser");
 }
 use geyser_proto::{update::UpdateOneof, SlotUpdate, SubscribeRequest, Update};
 
 pub mod geyser_service {
+    use geyser_proto::accounts_db_server::AccountsDb;
+    use tokio_stream::wrappers::ReceiverStream;
+    use tonic::{Request, Response, Status};
+
     use super::*;
-    use {
-        geyser_proto::accounts_db_server::AccountsDb,
-        tokio_stream::wrappers::ReceiverStream,
-        tonic::{Request, Response, Status},
-    };
 
     #[derive(Debug)]
     pub struct Service {

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use futures::{future, future::FutureExt};
+use geyser_proto::geyser_client::GeyserClient;
 use jsonrpc_core::futures::StreamExt;
 use jsonrpc_core_client::transports::http;
 use log::*;
@@ -13,13 +14,8 @@ use solana_rpc::rpc::{rpc_accounts::AccountsDataClient, OptionalContext};
 use solana_sdk::{commitment_config::CommitmentConfig, pubkey::Pubkey};
 use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
-pub mod geyser_proto {
-    tonic::include_proto!("accountsdb");
-}
-use geyser_proto::accounts_db_client::AccountsDbClient;
-
 use crate::{
-    metrics, AccountWrite, AnyhowWrap, GrpcSourceConfig, SlotStatus, SlotUpdate,
+    geyser_proto, metrics, AccountWrite, AnyhowWrap, GrpcSourceConfig, SlotStatus, SlotUpdate,
     SnapshotSourceConfig, SourceConfig, TlsConfig,
 };
 
@@ -77,7 +73,7 @@ async fn feed_data_geyser(
     }
     .connect()
     .await?;
-    let mut client = AccountsDbClient::new(channel);
+    let mut client = GeyserClient::new(channel);
 
     let mut update_stream = client
         .subscribe(geyser_proto::SubscribeRequest {})

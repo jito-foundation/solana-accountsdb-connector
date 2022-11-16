@@ -1,8 +1,8 @@
 [package]
-name = "solana-geyser-connector-plugin-grpc"
+name = "solana-accountsdb-connector-server"
 version = "0.1.0"
-authors = ["Christian Kamm <mail@ckamm.de>"]
-edition = "2018"
+authors = ["Christian Kamm <mail@ckamm.de>", "Zano <zano@jito.wtf>"]
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

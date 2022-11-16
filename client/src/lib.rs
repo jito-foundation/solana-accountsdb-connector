@@ -1,11 +1,14 @@
-pub mod chain_data;
+pub mod geyer_consumer;
 pub mod grpc_plugin_source;
 pub mod metrics;
+pub mod types;
 
-pub use chain_data::SlotStatus;
 use serde_derive::Deserialize;
-use solana_sdk::clock::Slot;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{clock::Slot, pubkey::Pubkey};
+
+pub(crate) mod geyser_proto {
+    tonic::include_proto!("geyser");
+}
 
 trait AnyhowWrap {
     type Value;
@@ -31,40 +34,18 @@ impl AccountWrite {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SlotStatus {
+    Rooted,
+    Confirmed,
+    Processed,
+}
+
 #[derive(Clone, Debug)]
 pub struct SlotUpdate {
     pub slot: u64,
     pub parent: Option<u64>,
-    pub status: chain_data::SlotStatus,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct PostgresConfig {
-    pub connection_string: String,
-    /// Number of parallel postgres connections used for account write insertions
-    pub account_write_connection_count: u64,
-    /// Maximum batch size for account write inserts over one connection
-    pub account_write_max_batch_size: usize,
-    /// Max size of account write queues
-    pub account_write_max_queue_size: usize,
-    /// Number of parallel postgres connections used for slot insertions
-    pub slot_update_connection_count: u64,
-    /// Number of queries retries before fatal error
-    pub retry_query_max_count: u64,
-    /// Seconds to sleep between query retries
-    pub retry_query_sleep_secs: u64,
-    /// Seconds to sleep between connection attempts
-    pub retry_connection_sleep_secs: u64,
-    /// Fatal error when the connection can't be reestablished this long
-    pub fatal_connection_timeout_secs: u64,
-    /// Allow invalid TLS certificates, passed to native_tls danger_accept_invalid_certs
-    pub allow_invalid_certs: bool,
-    /// Name key to use in the monitoring table
-    pub monitoring_name: String,
-    /// Time between updates to the monitoring table
-    pub monitoring_update_interval_secs: u64,
-    /// Time between cleanup jobs (0 to disable)
-    pub cleanup_interval_secs: u64,
+    pub status: SlotStatus,
 }
 
 #[derive(Clone, Debug, Deserialize)]
