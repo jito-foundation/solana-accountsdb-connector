@@ -1,103 +1,32 @@
-use {
-    crate::accounts_selector::AccountsSelector,
-    bs58,
+use std::{
+    collections::HashSet,
+    convert::TryInto,
+    fs::File,
+    io::Read,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, RwLock, RwLockReadGuard,
+    },
+};
+
+use bs58;
+use log::*;
+use serde_derive::Deserialize;
+use serde_json;
+use solana_geyser_plugin_interface::geyser_plugin_interface::{
+    GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, Result as PluginResult, SlotStatus,
+};
+use tokio::sync::{broadcast, mpsc};
+use tonic::transport::Server;
+
+use crate::{
+    accounts_selector::AccountsSelector,
+    active_accounts::ActiveAccounts,
     geyser_proto::{
         slot_update::Status as SlotUpdateStatus, update::UpdateOneof, AccountWrite, Ping,
         SlotUpdate, SubscribeRequest, SubscribeResponse, Update,
     },
-    log::*,
-    serde_derive::Deserialize,
-    serde_json,
-    solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, Result as PluginResult,
-        SlotStatus,
-    },
-    std::collections::HashSet,
-    std::convert::TryInto,
-    std::sync::atomic::{AtomicU64, Ordering},
-    std::sync::RwLock,
-    std::{fs::File, io::Read, sync::Arc},
-    tokio::sync::{broadcast, mpsc},
-    tonic::transport::Server,
 };
-
-pub mod geyser_proto {
-    tonic::include_proto!("accountsdb");
-}
-
-pub mod geyser_service {
-    use super::*;
-    use {
-        geyser_proto::accounts_db_server::AccountsDb,
-        tokio_stream::wrappers::ReceiverStream,
-        tonic::{Code, Request, Response, Status},
-    };
-
-    #[derive(Clone, Debug, Deserialize)]
-    pub struct ServiceConfig {
-        broadcast_buffer_size: usize,
-        subscriber_buffer_size: usize,
-    }
-
-    #[derive(Debug)]
-    pub struct Service {
-        pub sender: broadcast::Sender<Update>,
-        pub config: ServiceConfig,
-        pub highest_write_slot: Arc<AtomicU64>,
-    }
-
-    impl Service {
-        pub fn new(config: ServiceConfig, highest_write_slot: Arc<AtomicU64>) -> Self {
-            let (tx, _) = broadcast::channel(config.broadcast_buffer_size);
-            Self {
-                sender: tx,
-                config,
-                highest_write_slot,
-            }
-        }
-    }
-
-    #[tonic::async_trait]
-    impl AccountsDb for Service {
-        type SubscribeStream = ReceiverStream<Result<Update, Status>>;
-
-        async fn subscribe(
-            &self,
-            _request: Request<SubscribeRequest>,
-        ) -> Result<Response<Self::SubscribeStream>, Status> {
-            info!("new subscriber");
-            let (tx, rx) = mpsc::channel(self.config.subscriber_buffer_size);
-            let mut broadcast_rx = self.sender.subscribe();
-
-            tx.send(Ok(Update {
-                update_oneof: Some(UpdateOneof::SubscribeResponse(SubscribeResponse {
-                    highest_write_slot: self.highest_write_slot.load(Ordering::SeqCst),
-                })),
-            }))
-            .await
-            .unwrap();
-
-            tokio::spawn(async move {
-                let mut exit = false;
-                while !exit {
-                    let fwd = broadcast_rx.recv().await.map_err(|err| {
-                        // Note: If we can't keep up pulling from the broadcast
-                        // channel here, there'll be a Lagged error, and we'll
-                        // close the connection because data was lost.
-                        warn!("error while receiving message to be broadcast: {:?}", err);
-                        exit = true;
-                        Status::new(Code::Internal, err.to_string())
-                    });
-                    if let Err(_err) = tx.send(fwd).await {
-                        info!("subscriber stream closed");
-                        exit = true;
-                    }
-                }
-            });
-            Ok(Response::new(ReceiverStream::new(rx)))
-        }
-    }
-}
 
 pub struct PluginData {
     runtime: Option<tokio::runtime::Runtime>,
@@ -112,7 +41,7 @@ pub struct PluginData {
     ///
     /// Needed to catch writes that signal account closure, where
     /// lamports=0 and owner=system-program.
-    active_accounts: RwLock<HashSet<[u8; 32]>>,
+    active_accounts: ActiveAccounts,
 }
 
 #[derive(Default)]
@@ -139,6 +68,14 @@ impl PluginData {
         let _ = self.server_broadcast.send(Update {
             update_oneof: Some(update),
         });
+    }
+
+    pub(crate) fn accounts_selector(&self) -> &AccountsSelector {
+        &self.accounts_selector
+    }
+
+    pub(crate) fn active_accounts(&self) -> &ActiveAccounts {
+        &self.active_accounts
     }
 }
 
@@ -244,58 +181,64 @@ impl GeyserPlugin for Plugin {
         is_startup: bool,
     ) -> PluginResult<()> {
         let data = self.data.as_ref().expect("plugin must be initialized");
-        match account {
+        let (pubkey, owner, write_version, maybe_signature) = match account {
             ReplicaAccountInfoVersions::V0_0_1(account) => {
-                if account.pubkey.len() != 32 {
-                    error!(
-                        "bad account pubkey length: {}",
-                        bs58::encode(account.pubkey).into_string()
-                    );
-                    return Ok(());
-                }
-
-                // Select only accounts configured to look at, plus writes to accounts
-                // that were previously selected (to catch closures and account reuse)
-                let is_selected = data
-                    .accounts_selector
-                    .is_account_selected(account.pubkey, account.owner);
-                let previously_selected = {
-                    let read = data.active_accounts.read().unwrap();
-                    read.contains(&account.pubkey[0..32])
-                };
-                if !is_selected && !previously_selected {
-                    return Ok(());
-                }
-
-                // If the account is newly selected, add it
-                if !previously_selected {
-                    let mut write = data.active_accounts.write().unwrap();
-                    write.insert(account.pubkey.try_into().unwrap());
-                }
-
-                data.highest_write_slot.fetch_max(slot, Ordering::SeqCst);
-
-                debug!(
-                    "Updating account {:?} with owner {:?} at slot {:?}",
-                    bs58::encode(account.pubkey).into_string(),
-                    bs58::encode(account.owner).into_string(),
-                    slot,
-                );
-
-                data.broadcast(UpdateOneof::AccountWrite(AccountWrite {
-                    slot,
-                    is_startup,
-                    write_version: account.write_version,
-                    pubkey: account.pubkey.to_vec(),
-                    lamports: account.lamports,
-                    owner: account.owner.to_vec(),
-                    executable: account.executable,
-                    rent_epoch: account.rent_epoch,
-                    data: account.data.to_vec(),
-                    is_selected,
-                }));
+                (account.pubkey, account.owner, account.write_version, None)
             }
+            ReplicaAccountInfoVersions::V0_0_2(account) => (
+                account.pubkey,
+                account.owner,
+                account.write_version,
+                account.txn_signature,
+            ),
+        };
+
+        if pubkey.len() != 32 {
+            error!(
+                "bad account pubkey length: {}",
+                bs58::encode(pubkey).into_string()
+            );
+            return Ok(());
         }
+
+        // Select only accounts configured to look at, plus writes to accounts
+        // that were previously selected (to catch closures and account reuse)
+        let is_selected = data.accounts_selector.is_account_selected(pubkey, owner);
+        let previously_selected = {
+            let read = data.active_accounts.read().unwrap();
+            read.contains(&pubkey[0..32])
+        };
+        if !is_selected && !previously_selected {
+            return Ok(());
+        }
+
+        // If the account is newly selected, add it
+        if !previously_selected {
+            let mut write = data.active_accounts.write().unwrap();
+            write.insert(pubkey.try_into().unwrap());
+        }
+
+        data.highest_write_slot.fetch_max(slot, Ordering::SeqCst);
+
+        debug!(
+            "Updating account {:?} with owner {:?} at slot {:?}",
+            bs58::encode(pubkey).into_string(),
+            bs58::encode(owner).into_string(),
+            slot,
+        );
+
+        data.broadcast(UpdateOneof::AccountWrite(AccountWrite {
+            pubkey: pubkey.to_vec(),
+            tx_signature: maybe_signature.map(|sig| sig.to_string()),
+            is_startup,
+            slot,
+            write_version,
+        }));
+
+        Ok(())
+    }
+
+    fn notify_end_of_startup(&mut self) -> PluginResult<()> {
         Ok(())
     }
 
@@ -319,10 +262,6 @@ impl GeyserPlugin for Plugin {
             status: status as i32,
         }));
 
-        Ok(())
-    }
-
-    fn notify_end_of_startup(&mut self) -> PluginResult<()> {
         Ok(())
     }
 }
@@ -374,7 +313,9 @@ pub unsafe extern "C" fn _create_plugin() -> *mut dyn GeyserPlugin {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use {super::*, serde_json};
+    use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_accounts_selector_from_config() {

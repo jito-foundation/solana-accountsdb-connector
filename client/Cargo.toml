@@ -1,5 +1,5 @@
 [package]
-name = "solana-geyser-connector-lib"
+name = "solana-accountsdb-connector-client"
 version = "0.1.0"
 authors = ["Christian Kamm <mail@ckamm.de>"]
 edition = "2021"
@@ -8,43 +8,33 @@ edition = "2021"
 
 
 [dependencies]
+crossbeam = "0.8.2"
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["ws", "http"] }
-
-solana-rpc = "=1.9.13"
-solana-client = "=1.9.13"
-solana-account-decoder = "=1.9.13"
-solana-sdk = "=1.9.13"
-
+solana-rpc = "~1.14"
+solana-client = "~1.14"
+solana-account-decoder = "~1.14"
+solana-sdk = "~1.14"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-postgres = "0.7"
 postgres-types = { version = "0.2", features = ["array-impls", "derive"] }
-postgres-native-tls = "0.5"
 native-tls = "0.2"
-
-# postgres_query hasn't updated its crate in a while
-postgres_query = { git = "https://github.com/nolanderc/rust-postgres-query", rev = "b4422051c8a31fbba4a35f88004c1cefb1878dd5" }
-
 serde = "1.0.130"
 serde_derive = "1.0.130"
 serde_json = "1.0.68"
-
 tonic = { version = "0.6", features = ["tls"] }
 prost = "0.9"
-
 bs58 = "0.3.1"
 log = "0.4"
 rand = "0.7"
 anyhow = "1.0"
-fixed = { version = "1.9.0", features = ["serde"] }
 bytes = "1.0"
 
 futures = "0.3.17"
 futures-core = "0.3"
 futures-util = "0.3"
 
-async-stream = "0.2"
 async-channel = "1.6"
 async-trait = "0.1"
 
