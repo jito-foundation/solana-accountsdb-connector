@@ -11,10 +11,10 @@ edition = "2021"
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["ws", "http"] }
 
-solana-rpc = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "v1.14" }
-solana-client = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "v1.14" }
-solana-account-decoder = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "v1.14" }
-solana-sdk = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "v1.14" }
+solana-rpc = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "seg/v1.14-backport" }
+solana-client = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "seg/v1.14-backport" }
+solana-account-decoder = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "seg/v1.14-backport" }
+solana-sdk = { git = "https://github.com/jito-foundation/jito-solana.git", branch = "seg/v1.14-backport" }
 
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
