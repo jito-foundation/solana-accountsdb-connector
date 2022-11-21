@@ -1,26 +1,28 @@
-use std::{collections::HashMap, str::FromStr, time::Duration};
-
-use futures::{future, future::FutureExt};
-use jsonrpc_core::futures::StreamExt;
-use jsonrpc_core_client::transports::http;
-use log::*;
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::{
-    rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    rpc_response::{Response, RpcKeyedAccount},
+use {
+    futures::{future, future::FutureExt},
+    jsonrpc_core::futures::StreamExt,
+    jsonrpc_core_client::transports::http,
+    log::*,
+    solana_account_decoder::UiAccountEncoding,
+    solana_client::{
+        rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
+        rpc_response::{OptionalContext, Response, RpcKeyedAccount},
+    },
+    solana_rpc::rpc::rpc_accounts::AccountsDataClient,
+    solana_sdk::{account::Account, commitment_config::CommitmentConfig, pubkey::Pubkey},
+    std::{collections::HashMap, str::FromStr, time::Duration},
+    tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity},
 };
-use solana_rpc::rpc::{rpc_accounts::AccountsDataClient, OptionalContext};
-use solana_sdk::{account::Account, commitment_config::CommitmentConfig, pubkey::Pubkey};
-use tonic::transport::{Certificate, ClientTlsConfig, Endpoint, Identity};
 
 pub mod geyser_proto {
     tonic::include_proto!("accountsdb");
 }
-use geyser_proto::accounts_db_client::AccountsDbClient;
-
-use crate::{
-    metrics, AccountWrite, AnyhowWrap, GrpcSourceConfig, SlotStatus, SlotUpdate,
-    SnapshotSourceConfig, SourceConfig, TlsConfig,
+use {
+    crate::{
+        metrics, AccountWrite, AnyhowWrap, GrpcSourceConfig, SlotStatus, SlotUpdate,
+        SnapshotSourceConfig, SourceConfig, TlsConfig,
+    },
+    geyser_proto::accounts_db_client::AccountsDbClient,
 };
 
 type SnapshotData = Response<Vec<RpcKeyedAccount>>;
