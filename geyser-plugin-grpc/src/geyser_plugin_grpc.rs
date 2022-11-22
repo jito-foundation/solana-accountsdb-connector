@@ -1,37 +1,40 @@
-use {
-    crate::accounts_selector::AccountsSelector,
-    bs58,
-    geyser_proto::{
-        slot_update::Status as SlotUpdateStatus, update::UpdateOneof, AccountWrite, Ping,
-        SlotUpdate, SubscribeRequest, SubscribeResponse, Update,
+use std::{
+    collections::HashSet,
+    convert::TryInto,
+    fs::File,
+    io::Read,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, RwLock,
     },
-    log::*,
-    serde_derive::Deserialize,
-    serde_json,
-    solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, Result as PluginResult,
-        SlotStatus,
-    },
-    std::collections::HashSet,
-    std::convert::TryInto,
-    std::sync::atomic::{AtomicU64, Ordering},
-    std::sync::RwLock,
-    std::{fs::File, io::Read, sync::Arc},
-    tokio::sync::{broadcast, mpsc},
-    tonic::transport::Server,
 };
+
+use bs58;
+use geyser_proto::{
+    slot_update::Status as SlotUpdateStatus, update::UpdateOneof, AccountWrite, Ping, SlotUpdate,
+    SubscribeRequest, SubscribeResponse, Update,
+};
+use log::*;
+use serde_derive::Deserialize;
+use serde_json;
+use solana_geyser_plugin_interface::geyser_plugin_interface::{
+    GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, Result as PluginResult, SlotStatus,
+};
+use tokio::sync::{broadcast, mpsc};
+use tonic::transport::Server;
+
+use crate::accounts_selector::AccountsSelector;
 
 pub mod geyser_proto {
     tonic::include_proto!("accountsdb");
 }
 
 pub mod geyser_service {
+    use geyser_proto::accounts_db_server::AccountsDb;
+    use tokio_stream::wrappers::ReceiverStream;
+    use tonic::{Code, Request, Response, Status};
+
     use super::*;
-    use {
-        geyser_proto::accounts_db_server::AccountsDb,
-        tokio_stream::wrappers::ReceiverStream,
-        tonic::{Code, Request, Response, Status},
-    };
 
     #[derive(Clone, Debug, Deserialize)]
     pub struct ServiceConfig {
@@ -246,6 +249,7 @@ impl GeyserPlugin for Plugin {
         let data = self.data.as_ref().expect("plugin must be initialized");
         match account {
             ReplicaAccountInfoVersions::V0_0_2(account) => {
+                info!("update account");
                 if account.pubkey.len() != 32 {
                     error!(
                         "bad account pubkey length: {}",
@@ -378,7 +382,9 @@ pub unsafe extern "C" fn _create_plugin() -> *mut dyn GeyserPlugin {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use {super::*, serde_json};
+    use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_accounts_selector_from_config() {
